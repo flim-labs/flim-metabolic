@@ -42,7 +42,7 @@ class MetabolicPhasors:
         'metabolic_index_mean'
     ]
 
-    def __init__(self):
+    def __init__(self, imaging_file_path, phasors_file_path, threshold, median_filter_iterations):
         """
         Here we define some parameters.
 
@@ -92,15 +92,15 @@ class MetabolicPhasors:
             }
         }
         
-        self.imaging_file_path = "metabolic_2_1736248883_imaging.json"
-        self.phasors_file_path = "metabolic_2_1736248883_phasor_ch1_h1.json"
+        self.imaging_file_path = imaging_file_path
+        self.phasors_file_path = phasors_file_path
         self.active_channels = "0"
         self.active_channels_list = list(map(int, self.active_channels.split(',')))
         self.channel = self.active_channels_list[0]
         self.harmonic = 1
         self.colormap = 'grey'
-        self.threshold = 0
-        self.median_filter_iterations = 1
+        self.threshold = threshold
+        self.median_filter_iterations = median_filter_iterations
         self.median_filter_window = 3
 
         self.df = pd.DataFrame()
@@ -283,14 +283,17 @@ class MetabolicPhasors:
         ax1.set_yticks([1, ch_image_data.shape[0]])
         ax1.set_yticklabels(["1", str(ch_image_data.shape[0])]) 
         # ax1.set_title(f"Channel {self.channel + 1} - Image ({self.image_width}x{self.image_height})")
-        ax1.set_title(f"Fluorescence Intensity")
+        ax1.set_title(
+            f"Fluorescence Intensity",
+            weight='bold'
+        )
         cbar = plt.colorbar(im, ax=ax1)
         cbar.ax.yaxis.set_label_position("left")
         cbar.set_label(
-            "Photon Count / (0.2 * Number of Frames ns)",
-            # fontsize=12,
-            # weight='bold',
-            # labelpad=15
+            "Photon Count",
+            fontsize=12,
+            weight='bold',
+            labelpad=0
         )
 
         return None
@@ -302,9 +305,12 @@ class MetabolicPhasors:
         num_bins = 256
         x_values = np.linspace(0, self.laser_period_ns, num_bins)
         ax2.plot(x_values, ch_decay_data, color="red")
-        ax2.set_title(f"Channel {self.channel + 1} - TCSPC")
+        ax2.set_title(
+            f"Channel {self.channel + 1} - TCSPC",
+            weight='bold'
+        )
         ax2.set_xlabel("Time (ns)")
-        ax2.set_ylabel("Photon counts")
+        ax2.set_ylabel("Photon count")
         ax2.set_xlim(0, self.laser_period_ns)
         ticks = np.linspace(0, self.laser_period_ns, 3)
         ax2.set_xticks(ticks)
@@ -350,6 +356,17 @@ class MetabolicPhasors:
             va='top',
             fontweight='bold',
         )
+        ax.text(
+            0.449,
+            0.275,
+            f"Metabolic trajectory",
+            fontsize=10,
+            ha='left',
+            va='bottom',
+            # fontweight='bold',
+            color='red',
+            rotation=340
+        )
 
         return None
     
@@ -385,7 +402,7 @@ class MetabolicPhasors:
     
     def plot_phasors(self):
         # Phasors 
-        ax3 = self.fig.add_subplot(self.gs[0, 1]) 
+        ax3 = self.fig.add_subplot(self.gs[0, 1])
 
         self.plot_blue_semicirc(ax3)
         self.plot_metabolic_line(ax3)
@@ -419,29 +436,78 @@ class MetabolicPhasors:
         g_data = self.df["g_data"]
         s_data = self.df["s_data"]
         ch_image_data = self.image_data[self.enabled_channels.index(self.channel)]
+        bins = 100
         ch_image_data = ch_image_data.ravel()
         # intensity = ch_image_data[mask]
         intensity = ch_image_data
-        sc =ax3.scatter(
-            g_data,
-            s_data,
-            # label=f"Harmonic: {self.harmonic}",
-            zorder=2,
-            c=intensity,
-            cmap="grey",
-            s=10
+        # sc =ax3.scatter(
+        #     g_data,
+        #     s_data,
+        #     # label=f"Harmonic: {self.harmonic}",
+        #     zorder=2,
+        #     c=intensity,
+        #     cmap="grey",
+        #     s=10
+        # )
+        # cbar = plt.colorbar(sc, ax=ax3)
+        # cbar.ax.yaxis.set_label_position("left")
+        # cbar.set_label(
+        #     "Photon Count",
+        # )
+
+        x_bins = np.linspace(np.min(g_data), np.max(g_data), bins)
+        y_bins = np.linspace(np.min(s_data), np.max(s_data), bins)
+        x_bins = np.linspace(0, 1, bins)
+        y_bins = np.linspace(0, 0.6, bins)
+        counts, x_edges, y_edges = np.histogram2d(g_data, s_data, bins=[x_bins, y_bins])
+        x_centers = (x_edges[:-1] + x_edges[1:]) / 2
+        y_centers = (y_edges[:-1] + y_edges[1:]) / 2
+        array_min = np.min(counts)
+        array_max = np.max(counts)
+        factor = (counts - array_min) / (array_max - array_min)
+        intensity = factor + 0.2 * (1 - factor)
+        x = x_centers.repeat(bins - 1)
+        y = np.tile(y_centers, bins - 1)
+        counts = counts.flatten()
+        intensity = intensity.flatten()
+        x = x[counts > 0]
+        y = y[counts > 0]
+        intensity = intensity[counts > 0]
+        counts = counts[counts > 0]
+        sc = plt.scatter(
+            x,
+            y,
+            c=counts,
+            cmap='jet',
+            alpha=intensity,
+            marker='s',
+            s=50
         )
+
+        # df = self.df[self.df['g_data'].notna() & self.df['s_data'].notna()]
+        # x = df['g_data'].to_numpy()
+        # y = df['s_data'].to_numpy()
+        # x = x[~np.isnan(x)]
+        # y = y[~np.isnan(y)]
+        # plt.hist2d(x, y, bins=50, cmap='Blues')
+
         cbar = plt.colorbar(sc, ax=ax3)
         cbar.ax.yaxis.set_label_position("left")
         cbar.set_label(
-            "Photon Count / (0.2 * Number of Frames ns)",
+            "Pixel Count",
+            fontsize=12,
+            weight='bold',
+            labelpad=0
         )
 
         self.plot_mean(ax3, g_data, s_data)
 
         ax3.legend(fontsize="small")
         # ax3.set_title(f"Phasor - Channel {self.channel + 1} - Harmonic {self.harmonic}")
-        ax3.set_title(f"FLIM Phasor Plot")
+        ax3.set_title(
+            f"FLIM Phasor Plot",
+            weight='bold'
+        )
         ax3.set_xlabel("G")
         ax3.set_ylabel("S")
         ax3.grid(True)
@@ -479,10 +545,18 @@ class MetabolicPhasors:
         ax5.set_yticks([1, data_masked.shape[0]])
         ax5.set_yticklabels(["1", str(data_masked.shape[0])]) 
         ax5.set_aspect('equal')
-        ax5.set_title(f"FLIM")
+        ax5.set_title(
+            f"FLIM",
+            weight='bold'
+        )
         cbar = plt.colorbar(im, ax=ax5)
         cbar.ax.yaxis.set_label_position("left")
-        cbar.set_label("τφ")
+        cbar.set_label(
+            "τφ (ns)",
+            fontsize=12,
+            weight='bold',
+            labelpad=0
+        )
         cbar.set_ticks([0.4, 3.4])
         cbar.set_ticklabels(['0.4', '3.4'])
 
@@ -634,9 +708,9 @@ class MetabolicPhasors:
         cbar.ax.yaxis.set_label_position("left")
         cbar.set_label(
             "Metabolic Index (%)",
-            # fontsize=12,
-            # weight='bold',
-            # labelpad=15
+            fontsize=12,
+            weight='bold',
+            labelpad=0
         )
         cbar.ax.text(
             0.5,
@@ -733,7 +807,10 @@ class MetabolicPhasors:
         
         ax4.legend(fontsize="small")
         # ax4.set_title(f"Phasor - Channel {self.channel + 1} - Harmonic {self.harmonic}")
-        ax4.set_title(f"FLIM Metabolic Phasor Plot")
+        ax4.set_title(
+            f"FLIM Metabolic Phasor Plot",
+            weight='bold'
+        )
         ax4.set_xlabel("G")
         ax4.set_ylabel("S")
         ax4.grid(True)
@@ -747,7 +824,7 @@ class MetabolicPhasors:
             0.5,
             # f"Metabolic index\nof the centroid:\n{round(self.metabolic_index_mean, 2)} % OX",
             f"Average\nMetabolic Index\n{round(self.metabolic_index_mean, 2)} % OX",
-            fontsize=24,
+            fontsize=32,
             ha='center',
             va='center',
             fontweight='bold',
@@ -823,7 +900,10 @@ class MetabolicPhasors:
         ax5.set_yticks([1, data_masked.shape[0]])
         ax5.set_yticklabels(["1", str(data_masked.shape[0])]) 
         ax5.set_aspect('equal')
-        ax5.set_title(f"FLIM Metabolic Index")
+        ax5.set_title(
+            f"FLIM Metabolic Index",
+            weight='bold'
+        )
 
         return None
 
@@ -893,4 +973,3 @@ class MetabolicPhasors:
 if __name__ == "__main__":
     metabolic_phasors = MetabolicPhasors()
     metabolic_phasors.analyze_imaging_and_phasors_files()
-
