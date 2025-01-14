@@ -108,7 +108,7 @@ class MetabolicPhasors:
         return None
 
     def read_imaging_file(self):
-        with open(os.path.join('./data', self.imaging_file_path), "r") as f:
+        with open(os.path.join(self.imaging_file_path), "r") as f:
             data = json.load(f)
             if "header" not in data:
                 print("Invalid data file. Missing 'header' field.")
@@ -137,7 +137,7 @@ class MetabolicPhasors:
             return None
         
     def read_phasors_file(self):
-        with open(os.path.join('./data', self.phasors_path), "r") as f:
+        with open(self.phasors_path, "r") as f:
             data = json.load(f)
             print('###############################################################')
             print('#### Phasor file')
@@ -266,6 +266,14 @@ class MetabolicPhasors:
     def plot_imaging(self):
         # Imaging
         ch_image_data = self.image_data[self.enabled_channels.index(self.channel)]
+
+        data_2d = np.reshape(
+            self.df['metabolic_ratio'],
+            ch_image_data.shape
+        )
+        nan_mask = np.isnan(data_2d)
+        ch_image_data = np.where(nan_mask, 0, ch_image_data)
+
         ax1 = self.fig.add_subplot(self.gs[0, 0])
         data_min = np.min(ch_image_data)
         data_max = np.max(ch_image_data)
@@ -479,7 +487,7 @@ class MetabolicPhasors:
             y,
             c=counts,
             cmap='jet',
-            alpha=intensity,
+            # alpha=intensity,
             marker='s',
             s=50
         )
