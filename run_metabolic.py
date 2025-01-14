@@ -1,3 +1,6 @@
+import tkinter as tk
+from tkinter import filedialog
+
 from metabolic_2_phasors_imaging_script import MetabolicPhasors
 
 def main():
@@ -11,8 +14,17 @@ def main():
 
     """
 
-    imaging_file_path = "./data/metabolic_2_1736248883_imaging.json"
-    phasors_file_path = "./data/metabolic_2_1736248883_phasor_ch1_h1.json"
+    root = tk.Tk()
+    root.withdraw()
+
+    print(f"\n\nSELECT FILE IMAGING\n\n")
+    imaging_file_path = filedialog.askopenfilename(title="Select File Imaging")
+
+    print(f"\n\nSELECT FILE PHASORS\n\n")
+    phasors_file_path = filedialog.askopenfilename(title="Select File Phasors")
+
+    # imaging_file_path = "./data/metabolic_2_1736248883_imaging.json"
+    # phasors_file_path = "./data/metabolic_2_1736248883_phasor_ch1_h1.json"
     threshold = 0
     median_filter_iterations = 1
 
