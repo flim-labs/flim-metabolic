@@ -179,9 +179,12 @@ class MetabolicPhasors:
             # mask = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
             # g_data = g_data[mask]
             # s_data = s_data[mask]
-            condition = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
-            g_data = np.where(condition, g_data, np.nan)
-            s_data = np.where(condition, s_data, np.nan)
+            # condition = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
+            condition1 = (np.abs(g_data) < 2) & (np.abs(s_data) < 1)
+            condition2 = (g_data > 0) & (s_data > 0)
+            condition3 = ~((g_data == 0) & (s_data == 0))
+            g_data = np.where(condition1 & condition2 & condition3, g_data, np.nan)
+            s_data = np.where(condition1 & condition2 & condition3, s_data, np.nan)
 
             #### DEBUG
             self.df["g_data"] = g_data
@@ -267,12 +270,13 @@ class MetabolicPhasors:
         # Imaging
         ch_image_data = self.image_data[self.enabled_channels.index(self.channel)]
 
-        data_2d = np.reshape(
-            self.df['metabolic_ratio'],
-            ch_image_data.shape
-        )
-        nan_mask = np.isnan(data_2d)
-        ch_image_data = np.where(nan_mask, 0, ch_image_data)
+        if self.threshold > 0:
+            data_2d = np.reshape(
+                self.df['metabolic_ratio'],
+                ch_image_data.shape
+            )
+            nan_mask = np.isnan(data_2d)
+            ch_image_data = np.where(nan_mask, 0, ch_image_data)
 
         ax1 = self.fig.add_subplot(self.gs[0, 0])
         data_min = np.min(ch_image_data)
@@ -586,6 +590,9 @@ class MetabolicPhasors:
         d = (self.det(*line1), self.det(*line2))
         x = self.det(d, xdiff) / div
         y = self.det(d, ydiff) / div
+
+        x = np.where((x > 1) | (x < 0), np.nan, x)
+        y = np.where((y > 0.5) | (y < 0), np.nan, y)
         
         return x, y
     
