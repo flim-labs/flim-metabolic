@@ -26,13 +26,22 @@ def main():
 
     print(f"\n\nSELECT FILES\n\n")
     file_paths = filedialog.askopenfilenames(title="Select Files")
-    imaging_file_path = "./demo/metabolic_2_1736248883_imaging.json"
-    phasors_file_path = "./demo/metabolic_2_1736248883_phasor_ch1_h1.json"
+    # imaging_file_path = "./demo/metabolic_2_1736248883_imaging.json"
+    # phasors_file_path = "./demo/metabolic_2_1736248883_phasor_ch1_h1.json"
+    imaging_file_path = None
+    phasors_file_path = None
     for file_path in file_paths:
         if file_path.find('imaging') != -1:
             imaging_file_path = file_path
         elif file_path.find('phasor') != -1:
             phasors_file_path = file_path
+
+    if imaging_file_path is None:
+        print('Imaging file missing. Exiting...')
+        exit()
+    if phasors_file_path is None:
+        print('Phasors file missing. Exiting...')
+        exit()
 
     metabolic_phasors = MetabolicPhasors(
         imaging_file_path,

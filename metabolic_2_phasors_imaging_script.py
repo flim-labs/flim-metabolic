@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import scipy
 import matplotlib
+import matplotlib.colors as mcolors
 
 """
 CONFIG SECTION
@@ -39,7 +40,8 @@ class MetabolicPhasors:
         'median_filter_window',
         'fig',
         'gs',
-        'metabolic_index_mean'
+        'metabolic_index_mean',
+        'metabolic_color_map'
     ]
 
     def __init__(self, imaging_file_path, phasors_file_path, threshold, median_filter_iterations):
@@ -104,6 +106,23 @@ class MetabolicPhasors:
         self.median_filter_window = 3
 
         self.df = pd.DataFrame()
+
+        #### cool
+        colors = [
+            "white",
+            "yellow",
+            "green",
+            "lightblue",
+            "blue",
+            "violet",
+            "red"
+        ]
+        cmap = mcolors.LinearSegmentedColormap.from_list(
+            "custom_colormap",
+            colors,
+            N=256
+        )
+        self.metabolic_color_map = cmap
 
         return None
 
@@ -187,7 +206,7 @@ class MetabolicPhasors:
             s_data = np.where(condition1 & condition2 & condition3, s_data, np.nan)
 
             #### DEBUG
-            self.df["g_data"] = g_data
+            self.df["g_data"] = g_data + 0.5
             self.df["s_data"] = s_data
 
             return None
@@ -788,7 +807,7 @@ class MetabolicPhasors:
             y_int,
             zorder=2,
             c=metabolic_ratio,
-            cmap="cool",
+            cmap=self.metabolic_color_map,
             s=10,
             vmin=0
             # alpha=0.1
@@ -800,9 +819,10 @@ class MetabolicPhasors:
             # label=f"Harmonic: {self.harmonic}",
             zorder=2,
             c=metabolic_ratio,
-            cmap="cool",
+            cmap=self.metabolic_color_map,
             s=10,
-            vmin=0
+            vmin=0,
+            vmax=100
             # alpha=0.1
         )
         self.add_metabolic_cbar(sc, ax4)
@@ -894,13 +914,14 @@ class MetabolicPhasors:
             ch_image_data
         )
 
-        cmap = matplotlib.colormaps.get_cmap("cool").copy()
+        cmap = matplotlib.colormaps.get_cmap(self.metabolic_color_map).copy()
         cmap.set_bad(color="black")
         im = ax5.pcolormesh(
             data_masked,
             cmap=cmap,
             # shading='auto',
             vmin=0,
+            vmax=100,
             alpha=intensity
         )
 
