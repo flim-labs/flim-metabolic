@@ -206,7 +206,7 @@ class MetabolicPhasors:
             s_data = np.where(condition1 & condition2 & condition3, s_data, np.nan)
 
             #### DEBUG
-            self.df["g_data"] = g_data + 0.5
+            self.df["g_data"] = g_data
             self.df["s_data"] = s_data
 
             return None
