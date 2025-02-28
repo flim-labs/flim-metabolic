@@ -155,6 +155,32 @@ class MetabolicPhasors:
 
             return None
         
+    def set_g_s_df(self):
+        phasor = next((phasor for phasor in self.phasors_data if phasor["harmonic"] == self.harmonic), None)
+        if not phasor:
+            print(f"Harmonic {self.harmonic} doesn't exist")
+            exit(0)  
+
+        # g_data = np.array(self.phasors_data["g_data"]).ravel()
+        # s_data = np.array(self.phasors_data["s_data"]).ravel()
+        g_data = np.array(phasor["g_data"]).ravel()
+        s_data = np.array(phasor["s_data"]).ravel()
+        # mask = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
+        # g_data = g_data[mask]
+        # s_data = s_data[mask]
+        # condition = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
+        condition1 = (np.abs(g_data) < 2) & (np.abs(s_data) < 1)
+        condition2 = (g_data > 0) & (s_data > 0)
+        condition3 = ~((g_data == 0) & (s_data == 0))
+        g_data = np.where(condition1 & condition2 & condition3, g_data, np.nan)
+        s_data = np.where(condition1 & condition2 & condition3, s_data, np.nan)
+
+        #### DEBUG
+        self.df["g_data"] = g_data
+        self.df["s_data"] = s_data
+
+        return None
+        
     def read_phasors_file(self):
         with open(self.phasors_path, "r") as f:
             data = json.load(f)
@@ -162,6 +188,7 @@ class MetabolicPhasors:
             print('#### Phasor file')
             for label in data:
                 print(label)
+
             print('###############################################################')
             if "header" not in data:
                 print("Invalid data file. Missing 'header' field.")
@@ -193,23 +220,58 @@ class MetabolicPhasors:
             print(np.shape(self.phasors_data["g_data"]))
             print(np.shape(self.phasors_data["s_data"]))
 
-            g_data = np.array(self.phasors_data["g_data"]).ravel()
-            s_data = np.array(self.phasors_data["s_data"]).ravel()
-            # mask = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
-            # g_data = g_data[mask]
-            # s_data = s_data[mask]
-            # condition = (np.abs(g_data) < 1e9) & (np.abs(s_data) < 1e9) & ~((g_data == 0) & (s_data == 0))
-            condition1 = (np.abs(g_data) < 2) & (np.abs(s_data) < 1)
-            condition2 = (g_data > 0) & (s_data > 0)
-            condition3 = ~((g_data == 0) & (s_data == 0))
-            g_data = np.where(condition1 & condition2 & condition3, g_data, np.nan)
-            s_data = np.where(condition1 & condition2 & condition3, s_data, np.nan)
+            return None
+        
+    def read_file(self):
+        with open(self.phasors_path, "r") as f:
+            data = json.load(f)
+            if "header" not in data:
+                print("Invalid data file. Missing 'header' field.")
+                exit(0)
+            if "phasors_data" not in data:
+                print("Invalid data file. Missing 'phasors_data' field.")
+                exit(0)
+            if "intensities_data" not in data:
+                print("Invalid data file. Missing 'intensities_data' field.")
+                exit(0)            
 
-            #### DEBUG
-            self.df["g_data"] = g_data
-            self.df["s_data"] = s_data
+            # file_id must be IPG1
+            # 'IPG1' is an identifier for phasors imaging .json files
+            magic_bytes = bytes(data["header"]["file_id"])
+            magic_bytes_string = magic_bytes.decode("ascii")
+            if magic_bytes_string != "IPG1":
+                print(
+                    "Invalid data file. Selected file is not a Phasors Imaging .json file"
+                )
+                exit(0)
+
+            self.phasors_data = data["phasors_data"]
+            print('----------------------------')
+            # phasor = next((phasor for phasor in self.phasors_data if phasor["harmonic"] == 1), None)
+            # print(phasor)
+            self.phasors_data_header = data["header"]
+            metadata = data["header"]
+            self.laser_period_ns = metadata["laser_period_ns"]
+            self.image_width = metadata["image_width"]
+            self.image_height = metadata["image_height"]
+            self.imaging_data = data["intensities_data"]
+            self.enabled_channels = [index for index, value in enumerate(metadata["channels"]) if value]
 
             return None
+        
+    def load_data(self):
+        self.update_phasors_file_to_read()
+        if self.imaging_file_path is None:
+            self.read_file()
+        else:
+            self.read_phasors_file()
+            self.read_imaging_file()
+
+        self.read_phasors_metadata()
+        self.set_g_s_df()
+        self.read_image_data()
+
+        return None
              
     def read_phasors_metadata(self):
         # Active channels
@@ -990,12 +1052,7 @@ class MetabolicPhasors:
         return frequency_mhz
 
     def analyze_imaging_and_phasors_files(self):
-        self.update_phasors_file_to_read()
-        self.read_phasors_file()
-        self.read_phasors_metadata()
-
-        self.read_imaging_file()
-        self.read_image_data()
+        self.load_data()
 
         self.filter_df()
         self.add_tau_phi()

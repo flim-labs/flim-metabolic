@@ -36,24 +36,29 @@ def main():
         elif file_path.find('phasor') != -1:
             phasors_file_path = file_path
 
-    if imaging_file_path is None:
-        print('Imaging file missing. Exiting...')
-        exit()
+    # if imaging_file_path is None:
+    #     print('Imaging file missing. Exiting...')
+    #     exit()
     if phasors_file_path is None:
         print('Phasors file missing. Exiting...')
         exit()
 
+    """
+    ----------------------------------------------------------------------------
+    All thi spart is just to display the first image
+    """
     metabolic_phasors = MetabolicPhasors(
         imaging_file_path,
         phasors_file_path,
         0,
         0
     )
-    metabolic_phasors.update_phasors_file_to_read()
-    metabolic_phasors.read_phasors_file()
-    metabolic_phasors.read_phasors_metadata()
-    metabolic_phasors.read_imaging_file()
-    metabolic_phasors.read_image_data()
+    # metabolic_phasors.update_phasors_file_to_read()
+    # metabolic_phasors.read_phasors_file()
+    # metabolic_phasors.read_phasors_metadata()
+    # metabolic_phasors.read_imaging_file()
+    # metabolic_phasors.read_image_data()
+    metabolic_phasors.load_data()
     metabolic_phasors.fig = plt.figure(figsize=(18, 12))
     metabolic_phasors.gs = metabolic_phasors.fig.add_gridspec(
         1, # rows
@@ -63,6 +68,9 @@ def main():
     )
     metabolic_phasors.plot_imaging()
     plt.show()
+    """
+    ----------------------------------------------------------------------------
+    """
 
     # imaging_file_path = "./data/metabolic_2_1736248883_imaging.json"
     # phasors_file_path = "./data/metabolic_2_1736248883_phasor_ch1_h1.json"
